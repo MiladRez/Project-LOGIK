@@ -9,7 +9,7 @@ const FormsPage = (props) => {
                 <h1>{props.formTitle}</h1>
                 <Link to={{pathname: `/completeForm/${props.formTitle}`}}>
                     <div className="ui segment" style={{marginBottom: "20px"}}>
-                        <p>Status: Live</p>
+                        <p>Status: Live (Click to start survey)</p>
                     </div>
                 </Link>
                 
