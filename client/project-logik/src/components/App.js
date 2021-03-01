@@ -1,11 +1,9 @@
 import axios from 'axios';
 import React, {useEffect, useState} from 'react';
 import { Modal, Button } from 'semantic-ui-react';
-// import { v4 as uuidv4 } from 'uuid';
+import FormsPage from "./FormsPage";
 
 export const App = () => {
-    const [initialState, setInitialState] = useState([]);
-
     // state variables for Modal
     const [formOpen, setFormOpen] = useState(false);
     const [fieldOpen, setFieldOpen] = useState(false);
@@ -14,104 +12,157 @@ export const App = () => {
     const [formFieldType, setFormFieldType] = useState("shortText");
     const [formFieldQuestion, setFormFieldQuestion] = useState("");
     const [MC_OptionsList, setMC_OptionsList] = useState([]);
-    var MCCounter = 0;
 
     // state variables for new form
     const [listOfForms, setListOfForms] = useState([]);
     const [listOfFormFields, setListOfFormFields] = useState([]);
+    const [formTitle, setFormTitle] = useState("");
+
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        axios.get("http://localhost:3001/api/")
+        axios.get("/allForms")
             .then(res => {
-                setInitialState(res.data);
+                console.log(res.data);
+                setListOfForms(listOfForms.concat(res.data));
+                setIsLoading(false);
         });
     }, []);
-
-    console.log(initialState);
 
     function addToListOfFormFields() {
         setFieldOpen(false);
 
-        if (formFieldType === "multipleChoice") {
-            setListOfFormFields(listOfFormFields.concat({
-                type: formFieldType,
-                question: formFieldQuestion,
-                options: MC_OptionsList
-            }));
-        } else {
-            setListOfFormFields(listOfFormFields.concat({
-                type: formFieldType,
-                question: formFieldQuestion
-            }));
+        if (formFieldQuestion !== "") {
+            if (formFieldType === "multipleChoice") {
+                if (MC_OptionsList.length > 0) {
+                    setListOfFormFields(listOfFormFields.concat({
+                        type: formFieldType,
+                        question: formFieldQuestion,
+                        options: MC_OptionsList
+                    }));
+                    setMC_OptionsList([]);
+                }
+            } else {
+                setListOfFormFields(listOfFormFields.concat({
+                    type: formFieldType,
+                    question: formFieldQuestion
+                }));
+            }
         }
     }
 
-    console.log("MC_Options: " + MC_OptionsList);
-    console.log("List of Form Fields: " + listOfFormFields);
+    function addFormFieldsToForm() {
+        setFormOpen(false);
+
+        if (listOfFormFields.length > 0) {
+            const new_list = [listOfFormFields]
+
+            const postForm = {
+                title: formTitle,
+                fields: new_list
+            }
+
+            axios.post("/addForm/", postForm)
+                .then(() => console.log("form added"))
+                .catch((err) => {
+                    console.log(err);
+                });
+
+            setListOfForms(listOfForms.concat(postForm));
+            setListOfFormFields([]);
+        }
+    }
+
+    const formsList = listOfForms.map((formData) => {
+        return <FormsPage formTitle={formData.title} ></FormsPage>
+    });
+
+    if (isLoading) {
+        return( 
+            <div className="ui container">
+                <h1 className="ui header" style={{textAlign: "center", marginTop: "50%"}} >Loading...</h1>
+            </div>
+        );
+    }
 
     return(
-        <div>
+        <div className="ui container">
             <h1 style={{textAlign: "center", marginTop: "70px"}}>Forms Page</h1>
 
-            <h2>{formFieldType}</h2>
-            <h2>{formFieldQuestion}</h2>
-            <h2>{MC_OptionsList}</h2>
-        
-            <Modal
-                size={'fullscreen'}
-                dimmer={'blurring'}
-                open={formOpen}
-                onClose={() => setFormOpen(false)}
-                onOpen={() => setFormOpen(true)}
-                trigger={<Button>Add Form</Button>}
-            >
-                <Modal.Header>Add Form</Modal.Header>
-                <Modal.Content>
-                    <Modal.Description>
-                        <Modal
-                            open={fieldOpen}
-                            onClose={() => setFieldOpen(false)}
-                            onOpen={() => setFieldOpen(true)}
-                            trigger={<Button>Add Field</Button>}
-                        >
-                            <Modal.Header>Add Form Field</Modal.Header>
-                            <Modal.Content>
-                                <Modal.Description>
-                                    <form>
-                                        <label>
-                                            Field
-                                            <select defaultValue={formFieldType} onChange={(e) => setFormFieldType(e.target.value)}>
-                                                <option value="shortText">Short Text Input</option>
-                                                <option value="longText">Long Text Input</option>
-                                                <option value="multipleChoice">Multiple Choice</option>
-                                            </select>
-                                        </label>
-                                        <label>
-                                            Label
-                                            <input type="text" name="question" onChange={(e) => setFormFieldQuestion(e.target.value)} />
-                                        </label>
-                                        {formFieldType === "multipleChoice" && (
+            <div className="ui container">
+                <div className="ui three column grid">
+                    {formsList}
+                </div>
+            </div>
+
+            <div style={{marginTop: "10%", marginLeft: "46%"}}>
+                <Modal
+                    size={'large'}
+                    dimmer={'blurring'}
+                    open={formOpen}
+                    onClose={() => setFormOpen(false)}
+                    onOpen={() => setFormOpen(true)}
+                    trigger={<Button>Add Form</Button>}
+                >
+                    <Modal.Header>Add Form</Modal.Header>
+                    <Modal.Content>
+                        <Modal.Description>
+
+                            <label style={{padding: "10px"}}>
+                                Form Title
+                                <input type="text" required onChange={(e) => setFormTitle(e.target.value)} style={{marginLeft: "10px"}}></input>
+                            </label>
+
+                            <Modal
+                                open={fieldOpen}
+                                onClose={() => setFieldOpen(false)}
+                                onOpen={() => setFieldOpen(true)}
+                                trigger={<Button style={{marginLeft: "20px"}}>Add Field</Button>}
+                            >
+                                <Modal.Header>Add Form Field</Modal.Header>
+                                <Modal.Content>
+                                    <Modal.Description>
+                                        <form>
+                                            <div>
                                             <label>
-                                            Option(s)
-                                            <input type="text" name={`option${MCCounter}`} onBlur={(e) => setMC_OptionsList(MC_OptionsList.concat(e.target.value))} /><Button type="button" className="positive ui button" onClick={() => MCCounter++}>+</Button>
-                                            </label>
-                                        )}
-                                        {MC_OptionsList.map((option) => {
-                                            return <div><input type="text" name={`option${MCCounter}`} onBlur={(e) => setMC_OptionsList(MC_OptionsList.concat(e.target.value))} /><button type="button" className="positive ui button" onClick={() => MCCounter++}>+</button><button type="button" className="negative ui button" onClick={() => MCCounter++}>-</button></div>
-                                        })}
-                                    </form>
-                                </Modal.Description>
-                            </Modal.Content>
-                            <Modal.Actions>
-                                <Button onClick={() => addToListOfFormFields}>OK</Button>
-                            </Modal.Actions>
-                        </Modal>
-                    </Modal.Description>
-                </Modal.Content>
-                <Modal.Actions>
-                    <Button onClick={() => setFormOpen(false)}>OK</Button>
-                </Modal.Actions>
-            </Modal>
+                                                    Field
+                                                    <select style={{marginLeft: "10px", marginBottom: "30px"}} defaultValue={formFieldType} onChange={(e) => setFormFieldType(e.target.value)}>
+                                                        <option value="shortText">Short Text Input</option>
+                                                        <option value="longText">Long Text Input</option>
+                                                        <option value="multipleChoice">Multiple Choice</option>
+                                                    </select>
+                                                </label> 
+                                            </div>
+                                            <div>
+                                                <label>
+                                                    Label
+                                                    <div className="ui input focus" style={{display: "block", marginBottom: "30px"}}><input type="text" name="question" onChange={(e) => setFormFieldQuestion(e.target.value)} /></div>
+                                                </label>
+                                            </div>
+                                            <div>
+                                                {formFieldType === "multipleChoice" && (
+                                                    <label>
+                                                        Option(s)
+                                                        <div className="ui input focus" style={{display: "block", padding: "10px"}}><input type="text" name="option1" onBlur={(e) => setMC_OptionsList(MC_OptionsList.concat(e.target.value))} /></div>
+                                                        <div className="ui input focus" style={{display: "block", padding: "10px"}}><input type="text" name="option2" onBlur={(e) => setMC_OptionsList(MC_OptionsList.concat(e.target.value))} /></div>
+                                                        <div className="ui input focus" style={{display: "block", padding: "10px"}}><input type="text" name="option3" onBlur={(e) => setMC_OptionsList(MC_OptionsList.concat(e.target.value))} /></div>
+                                                    </label>
+                                                )}
+                                            </div>
+                                        </form>
+                                    </Modal.Description>
+                                </Modal.Content>
+                                <Modal.Actions>
+                                    <Button onClick={addToListOfFormFields}>OK</Button>
+                                </Modal.Actions>
+                            </Modal>
+                        </Modal.Description>
+                    </Modal.Content>
+                    <Modal.Actions>
+                        <Button onClick={addFormFieldsToForm}>OK</Button>
+                    </Modal.Actions>
+                </Modal>
+            </div>
         </div>
     );
 }
